@@ -8,6 +8,8 @@ OBJS += passes/opt/opt_dff.o
 OBJS += passes/opt/opt_share.o
 OBJS += passes/opt/opt_clean.o
 OBJS += passes/opt/opt_expr.o
+OBJS += passes/opt/opt_constraint.o
+
 
 ifneq ($(SMALL),1)
 OBJS += passes/opt/share.o
