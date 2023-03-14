@@ -417,9 +417,10 @@ void simplify_eq_constraint(solver &s, context &c) {
     expr outExpr = get_expr(c, outSig, path);
     expr ctrdExpr = get_expr(c, ctrdSig, path);
     s.push();
-    s.add(outExpr == (ctrdExpr == forbidValue));
+    s.add(ctrdExpr == forbidValue);
     std::cout << "-- To check SAT, the model is: " << s.to_smt2() << std::endl;    
     if(s.check() == unsat) {
+      std::cout << "!!! UNSAT! do simplification" << std::endl;
       module->remove(cell);
       module->connect(outSig, RTLIL::SigSpec(false));
     }
