@@ -403,7 +403,8 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
 }
 
 
-void simplify(solver &s, context &c) {
+void simplify_eq_constraint(solver &s, context &c) {
+  std::cout << "=== Begin simplify" << std::endl;
   for(auto set: g_check_vec) {
     std::string path = set.path;
     auto cell = set.cell;
@@ -444,7 +445,7 @@ struct ConstraintPropagatePass : public Pass {
     get_drive_map(module, mp);
     std::cout << "=== Begin propagate_constraints" << std::endl;    
     propagate_constraints(s, c, design, module, mp, inputSig);
-    simplify(s, c);
+    simplify_eq_constraint(s, c);
   }
 } ConstraintPropagatePass;
 
