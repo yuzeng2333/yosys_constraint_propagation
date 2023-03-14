@@ -85,7 +85,7 @@ all: top-all
 YOSYS_SRC := $(dir $(firstword $(MAKEFILE_LIST)))
 VPATH := $(YOSYS_SRC)
 
-CXXFLAGS := $(CXXFLAGS) -Wall -Wextra -ggdb -I. -I"$(YOSYS_SRC)" -MD -MP -D_YOSYS_ -fPIC -I$(PREFIX)/include 
+CXXFLAGS := $(CXXFLAGS) -Wall -Wextra -ggdb -I. -I"$(YOSYS_SRC)" -MD -MP -D_YOSYS_ -fPIC -I$(PREFIX)/include
 LDLIBS := $(LDLIBS) -lstdc++ -lm
 PLUGIN_LDFLAGS :=
 
@@ -602,7 +602,6 @@ $(eval $(call add_include_file,kernel/satgen.h))
 $(eval $(call add_include_file,kernel/ff.h))
 $(eval $(call add_include_file,kernel/ffinit.h))
 $(eval $(call add_include_file,kernel/mem.h))
-$(eval $(call add_include_file,kernel/util.h))
 $(eval $(call add_include_file,libs/ezsat/ezsat.h))
 $(eval $(call add_include_file,libs/ezsat/ezminisat.h))
 $(eval $(call add_include_file,libs/sha1/sha1.h))
@@ -617,7 +616,7 @@ $(eval $(call add_include_file,backends/cxxrtl/cxxrtl_capi.h))
 $(eval $(call add_include_file,backends/cxxrtl/cxxrtl_vcd_capi.cc))
 $(eval $(call add_include_file,backends/cxxrtl/cxxrtl_vcd_capi.h))
 
-OBJS += kernel/driver.o kernel/register.o kernel/rtlil.o kernel/log.o kernel/calc.o kernel/util.o kernel/yosys.o 
+OBJS += kernel/driver.o kernel/register.o kernel/rtlil.o kernel/log.o kernel/calc.o kernel/yosys.o
 ifeq ($(ENABLE_ABC),1)
 ifneq ($(ABCEXTERNAL),)
 kernel/yosys.o: CXXFLAGS += -DABCEXTERNAL='"$(ABCEXTERNAL)"'
@@ -695,9 +694,6 @@ ifeq ($(CONFIG),emcc)
 yosys.js: $(filter-out yosysjs-$(YOSYS_VER).zip,$(EXTRA_TARGETS))
 endif
 
-LDFLAGS += -I/home/yuzeng/workspace/tools/yosys/passes/opt/include
-LDLIBS += -lz3
-
 $(PROGRAM_PREFIX)yosys$(EXE): $(OBJS)
 	$(P) $(LD) -o $(PROGRAM_PREFIX)yosys$(EXE) $(LDFLAGS) $(OBJS) $(LDLIBS)
 
@@ -707,8 +703,6 @@ ifeq ($(OS), Darwin)
 else
 	$(P) $(LD) -o libyosys.so -shared -Wl,-soname,$(DESTDIR)$(LIBDIR)/libyosys.so $(LDFLAGS) $^ $(LDLIBS)
 endif
-
-CXXFLAGS += -g -I/home/yuzeng/workspace/tools/yosys/passes/opt/include -I/home/yuzeng/workspace/tools/z3/src/api/c++
 
 %.o: %.cc
 	$(Q) mkdir -p $(dir $@)
