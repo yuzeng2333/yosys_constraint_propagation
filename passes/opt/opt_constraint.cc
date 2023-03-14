@@ -165,6 +165,7 @@ void add_neq_ctrd(solver &s, context &c, RTLIL::SigSpec inputSig, int forbidValu
     expr inputExpr = c.bv_const(inputName.c_str(), width);
     s.add(inputExpr != forbidValue);
   //}
+  std::cout << "-- Add input constraint, the model is: " << s.to_smt2() << std::endl;
 }
 
 
@@ -406,6 +407,7 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
 void simplify_eq_constraint(solver &s, context &c) {
   std::cout << "=== Begin simplify" << std::endl;
   for(auto set: g_check_vec) {
+    std::cout << "-- A new check" << std::endl;    
     std::string path = set.path;
     auto cell = set.cell;
     RTLIL::SigSpec outSig = set.outSig;
@@ -416,6 +418,7 @@ void simplify_eq_constraint(solver &s, context &c) {
     expr ctrdExpr = get_expr(c, ctrdSig, path);
     s.push();
     s.add(outExpr == (ctrdExpr == forbidValue));
+    std::cout << "-- To check SAT, the model is: " << s.to_smt2() << std::endl;    
     if(s.check() == unsat) {
       module->remove(cell);
       module->connect(outSig, RTLIL::SigSpec(false));
