@@ -49,7 +49,7 @@ struct DestGroup {
 std::queue<WorkItem> g_work_list;
 std::vector<RTLIL::Cell*> g_cell_stack;
 std::vector<CheckSet> g_check_vec;
-std::map<std::string, expr*> g_expr_map;
+std::map<std::string, std::shared_ptr<expr>> g_expr_map;
 typedef std::map<RTLIL::SigSpec, DestGroup> DriveMap_t;
 
 
