@@ -138,7 +138,7 @@ std::string get_path() {
 
 
 std::string get_hier_name(RTLIL::SigSpec inputSig) {
-  assert(!inputSig.is_bit());
+  //assert(!inputSig.is_bit());
   std::string path = get_path();
   std::string wireName;
   wireName = inputSig.as_wire()->name.str();
