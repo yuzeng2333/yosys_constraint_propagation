@@ -244,6 +244,7 @@ void traverse(Design* design, RTLIL::Module* module) {
 
 
 void collect_eq(RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
+  std::cout << "-- collect_eq: " << ctrdSig.as_wire()->name.str() << std::endl;
   bool use_ctrd_sig = false;
   bool use_const = false;
   int constValue;
@@ -325,6 +326,8 @@ void get_drive_map(RTLIL::Module* module, DriveMap_t &mp) {
 
 void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
                 RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
+   std::cout << "-- add_submod, cell: " << cell->name.str() << ", ctrdSig: " 
+             << ctrdSig.as_wire()->name.str() << std::endl;   
    RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
    if(port.empty()) return;
    auto subMod = get_subModule(design, cell);
@@ -336,6 +339,8 @@ void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* mod
 
 void add_and(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
              DriveMap_t &mp, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
+  std::cout << "-- add_and, cell: " << cell->name.str() << ", ctrdSig: " 
+            << ctrdSig.as_wire()->name.str() << std::endl;
   RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
   if(port.empty()) return;
   RTLIL::SigSpec outputConnSig;
@@ -385,7 +390,6 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
   assert(group.wires.empty());
   auto connectedCells = group.cells;
   for(auto cell: connectedCells) {
-    print_module(cell->module);
     if(cell->type == ID($eq)) 
       collect_eq(cell, ctrdSig);
     else if(cell_is_module(design, cell))
