@@ -335,6 +335,8 @@ void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* mod
    std::cout << "-- add_submod, cell: " << cell->name.str() << ", ctrdSig: " 
              << ctrdSig.as_wire()->name.str() << std::endl;   
    RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
+   std::string path = get_path();
+   expr ctrdExpr = get_expr(c, ctrdSig, path);
    if(port.is_wire())
      std::cout << "port :" << port.as_wire()->name.str() << std::endl;
    if(port.empty()) return;
@@ -342,6 +344,9 @@ void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* mod
    DriveMap_t mp;
    get_drive_map(subMod, mp);
    g_cell_stack.push_back(cell);
+   path = get_path();
+   expr portExpr = get_expr(c, port, path);
+   s.add(ctrdExpr == portExpr);
    propagate_constraints(s, c, design, subMod, mp, port);
    g_cell_stack.pop_back();
 }
