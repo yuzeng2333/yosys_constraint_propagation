@@ -93,9 +93,10 @@ RTLIL::SigSpec get_cell_port(RTLIL::SigSpec sig, RTLIL::Cell *cell) {
     auto connSig = pair.second;
     // only consider one case here:
     // 1. port and sig are perfectly connected
-    assert(complete_signal(connSig));
-    assert(complete_signal(sig));
-    if(connSig == sig) return cell->getPort(portId);
+    //assert(complete_signal(connSig));
+    //assert(complete_signal(sig));
+    if(connSig == sig) 
+      return cell->module->design->modules_[cell->type]->wires_[portId];
   }
   return RTLIL::SigSpec();
 }
@@ -311,11 +312,15 @@ void simplify_eq(solver &s, context &c, RTLIL::Module* module,
 
 
 void get_drive_map(RTLIL::Module* module, DriveMap_t &mp) {
+  std::cout << "\n ~~~ Begin get_drive_map:" << std::endl;
   for(auto cellPair: module->cells_) {
     RTLIL::Cell* cell = cellPair.second;
+    std::cout << "~~ cell:" << cell->name.str() << std::endl;
     for(auto pair: cell->connections_) {
       auto portId = pair.first;
       auto connSig = pair.second;
+      if(connSig.is_wire())
+        std::cout << "~ sig :" << connSig.as_wire()->name.str() << std::endl;
       if(mp.find(connSig) == mp.end())
         mp.emplace(connSig, DestGroup{std::set<RTLIL::SigSpec>{}, std::set<RTLIL::Cell*>{cell}});
       else
@@ -330,6 +335,8 @@ void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* mod
    std::cout << "-- add_submod, cell: " << cell->name.str() << ", ctrdSig: " 
              << ctrdSig.as_wire()->name.str() << std::endl;   
    RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
+   if(port.is_wire())
+     std::cout << "port :" << port.as_wire()->name.str() << std::endl;
    if(port.empty()) return;
    auto subMod = get_subModule(design, cell);
    DriveMap_t mp;
@@ -386,6 +393,8 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
   //}
   // traverse all cells
   print_sigspec(ctrdSig);
+  if(ctrdSig.is_wire())
+    std::cout << "ctrdSig :" << ctrdSig.as_wire()->name.str() << std::endl;
   assert(mp.find(ctrdSig) != mp.end());
   const auto group = mp[ctrdSig];
   assert(group.wires.empty());
