@@ -341,7 +341,9 @@ void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* mod
    auto subMod = get_subModule(design, cell);
    DriveMap_t mp;
    get_drive_map(subMod, mp);
+   g_cell_stack.push_back(cell);
    propagate_constraints(s, c, design, subMod, mp, port);
+   g_cell_stack.pop_back();
 }
 
 
