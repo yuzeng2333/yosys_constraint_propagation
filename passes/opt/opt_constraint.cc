@@ -431,18 +431,43 @@ void simplify_eq_constraint(solver &s, context &c) {
 
 struct ConstraintPropagatePass : public Pass {
   ConstraintPropagatePass() : Pass("opt_ctrd", "constraint propagation pass") { }
-  void execute(std::vector<std::string>, Design* design) override { 
+  void execute(std::vector<std::string> args, Design* design) override { 
     log_header(design, "Executing the new OPT_CONSTRAINT pass\n");
     std::cout << "Inside ConstraintPropagatePass" << std::endl;
+    // parse args
+    std::string inputName = "\\io_opcode";
+    int shift = 0;
+    int length = 2;
+    uint32_t forbidValue = 1;    
+    for (int argidx = 1; argidx < args.size(); argidx++) {
+			if (args[argidx] == "-name") {
+        assert(argidx < args.size() - 1);
+				inputName = args[++argidx];
+				continue;
+			}
+			if (args[argidx] == "-shift") {
+        assert(argidx < args.size() - 1);
+				shift = std::stoi(args[++argidx]);
+				continue;
+			}
+			if (args[argidx] == "-length") {
+        assert(argidx < args.size() - 1);
+				length = std::stoi(args[++argidx]);
+				continue;
+			}
+			if (args[argidx] == "-forbid") {
+        assert(argidx < args.size() - 1);
+				forbidValue = std::stoi(args[++argidx]);
+				continue;
+			}
+    }
+
+    // begin simplification
     context c;
     solver s(c);
     // Iterate through all modules in the design
     RTLIL::Module* module = design->top_module();
     // Recursively propagate constants through the module
-    std::string inputName = "\\io_opcode";
-    int shift = 0;
-    int length = 2;
-    uint32_t forbidValue = 1;
     RTLIL::SigSpec inputSig = get_sigspec(module, inputName, shift, length);
     add_neq_ctrd(s, c, inputSig, forbidValue);
     DriveMap_t mp;
