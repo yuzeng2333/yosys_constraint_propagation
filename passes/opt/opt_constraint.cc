@@ -492,6 +492,35 @@ void add_dff(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
   }
 }
 
+void add_mem(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
+             DriveMap_t &mp, RegSet_t &regSet, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
+  std::cout << "-- add_mem, cell: " << cell->name.str() << ", ctrdSig: " 
+            << ctrdSig.as_wire()->name.str() << std::endl;
+  RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
+  if(port.empty()) return;
+  RTLIL::SigSpec outputConnSig;
+  bool input_is_wr_data = false;
+  // find the signal connected to RD_DATA
+  for(auto pair: cell->connections_) {
+    auto portId = pair.first;
+    auto connSig = pair.second;
+    if(portId == "RD_DATA") {
+      outputConnSig = connSig;
+    }
+    else if(portId == "WR_DATA" && connSig == ctrdSig) {
+      input_is_wr_data = true;
+    }
+  }
+  if(input_is_wr_data) {
+    assert(equal_width(ctrdSig, outputConnSig));
+    auto path = get_path();
+    expr ctrdExpr = get_expr(c, ctrdSig, path);
+    expr outExpr = get_expr(c, outputConnSig, path);
+    s.add(ctrdExpr == outExpr);
+    propagate_constraints(s, c, design, module, mp, regSet, outputConnSig);
+  }
+}
+
 /// Recursively propagate constraints through the design
 void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module* module, 
                            DriveMap_t &mp, RegSet_t &regSet, RTLIL::SigSpec ctrdSig)
@@ -526,6 +555,8 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
       add_dff(s, c, design, module, mp, regSet, cell, ctrdSig);
     else if(cell->type == ID($mux))
       add_mux(s, c, design, module, mp, regSet, cell, ctrdSig);
+    else if(cell->type == ID($mem))
+      add_mem(s, c, design, module, mp, regSet, cell, ctrdSig);
     else {
       std::cout << "Error: unexpected cell type: " << cell->type.str() << std::endl;
     }
