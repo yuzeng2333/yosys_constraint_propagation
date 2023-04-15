@@ -327,6 +327,15 @@ void get_drive_map(RTLIL::Module* module, DriveMap_t &mp) {
         mp[connSig].cells.insert(cell);
     }
   }
+  // iterate the connections_
+  for(auto pair: module->connections_) {
+    auto connSig = pair.first;
+    auto destSig = pair.second;
+    if(mp.find(connSig) == mp.end())
+      mp.emplace(connSig, DestGroup{std::set<RTLIL::SigSpec>{destSig}, std::set<RTLIL::Cell*>{}});
+    else
+      mp[connSig].wires.insert(destSig);
+  }
 }
 
 
@@ -392,6 +401,38 @@ void add_and(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
     s.add((ctrdExpr & const_value) == outExpr);
     propagate_constraints(s, c, design, module, mp, regSet, outputConnSig);
   }
+}
+
+void add_concat(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
+                DriveMap_t &mp, RegSet_t &regSet, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
+  std::cout << "-- add_concat, cell: " << cell->name.str() << ", ctrdSig: " 
+            << ctrdSig.as_wire()->name.str() << std::endl;
+  RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
+  if(port.empty()) return;
+  // get the other input signal and the output signal
+  RTLIL::SigSpec outputConnSig;
+  RTLIL::SigSpec inputConnSig;
+  bool ctrdIsFirst = false;
+  for(auto pair: cell->connections_) {
+    auto portId = pair.first;
+    auto connSig = pair.second;
+    if(connSig == ctrdSig) continue;
+    if(cell->output(portId)) {
+      outputConnSig = connSig;
+    }
+    else if(cell->input(portId)) {
+      inputConnSig = connSig;
+      if(portID == ID::B) ctrdIsFirst = true;
+    }
+  }
+  // add constraint for the concatenation
+  auto path = get_path();
+  expr ctrdExpr = get_expr(c, ctrdSig, path);
+  expr outExpr = get_expr(c, outputConnSig, path);
+  if(ctrdIsFirst)
+    s.add(concat(ctrdExpr, inputConnSig) == outExpr));
+  else
+    s.add(concat(inputConnSig, ctrdExpr) == outExpr));
 }
 
 // mux is considered only when its output is writing to a reg, and that
@@ -557,6 +598,8 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
       add_mux(s, c, design, module, mp, regSet, cell, ctrdSig);
     else if(cell->type == ID($mem))
       add_mem(s, c, design, module, mp, regSet, cell, ctrdSig);
+    else if(cell->type == ID($concat))
+      add_concat(s, c, design, module, mp, regSet, cell, ctrdSig);
     else {
       std::cout << "Error: unexpected cell type: " << cell->type.str() << std::endl;
     }
