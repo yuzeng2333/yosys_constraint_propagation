@@ -394,11 +394,10 @@ void add_and(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
   }
 }
 
-
 // mux is considered only when its output is writing to a reg, and that
 // reg is also an input of this mux
 void add_mux(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
-             DriveMap_t &mp, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
+             DriveMap_t &mp, RegSet_t &regSet, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
   std::cout << "-- add_mux, cell: " << cell->name.str() << ", ctrdSig: " 
             << ctrdSig.as_wire()->name.str() << std::endl;
   RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
@@ -406,12 +405,42 @@ void add_mux(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
   RTLIL::SigSpec outputConnSig;
   bool has_reg_input = false;
   bool driving_same_reg = false;
+  RTLIL::SigSpec regSig;
   int const_value;
   for(auto pair: cell->connections_) {
     auto portId = pair.first;
     auto connSig = pair.second;
-    if()
+    if(regSet.find(connSig) != regSet.end()) {
+      has_reg_input = true;
+      regSig = connSig;
+    }
+    else if(cell->output(portId)) {
+      outputConnSig = connSig;
+    }
   }
+  if(!has_reg_input) return;
+  // check if the output signal is driving a dff
+  if(mp.find(outputConnSig) != mp.end()) {
+    auto destGroup = mp[outputConnSig];
+    for(auto cell: destGroup.cells) {
+      if(cell->type == "$dff") {
+        // check if the output of dff is the same as regSig
+        auto dffConnSig = cell->connections_["Q"];
+        if(dffConnSig == regSig) {
+          driving_same_reg = true;
+          break;
+        }
+      }
+    }
+  }
+  if(!driving_same_reg) return;
+  // now we know that the output of this mux is driving the same reg
+  // add constraint
+  auto path = get_path();
+  expr ctrdExpr = get_expr(c, ctrdSig, path);
+  expr regExpr = get_expr(c, regSig, path);
+  s.add(ctrdExpr == regExpr);
+  propagate_constraints(s, c, design, module, mp, regSet, regSig);
 }
 
 void add_dff(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
