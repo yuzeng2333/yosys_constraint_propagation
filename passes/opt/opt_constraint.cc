@@ -404,6 +404,7 @@ void add_mux(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
   if(port.empty()) return;
   RTLIL::SigSpec outputConnSig;
   bool has_reg_input = false;
+  bool has_x_input = false;
   bool driving_same_reg = false;
   RTLIL::SigSpec regSig;
   int const_value;
@@ -417,30 +418,48 @@ void add_mux(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
     else if(cell->output(portId)) {
       outputConnSig = connSig;
     }
+    else if(connSig.is_fully_const()) {
+      const_value = connSig.as_int();
+    }
+    else if(connSig.is_fully_undef()) {
+      has_x_input = true;
+    }
   }
-  if(!has_reg_input) return;
+  if(!has_reg_input) {
+    // if the other input is not reg, then it should be all x
+    if(!has_x_input) return;
+    // now we know that the other input is x
+    // add constraint
+    auto path = get_path();
+    expr ctrdExpr = get_expr(c, ctrdSig, path);
+    expr outExpr = get_expr(c, outputConnSig, path);
+    s.add((ctrdExpr & const_value) == outExpr);
+    propagate_constraints(s, c, design, module, mp, regSet, outputConnSig);
+  }
+  else {
   // check if the output signal is driving a dff
-  if(mp.find(outputConnSig) != mp.end()) {
-    auto destGroup = mp[outputConnSig];
-    for(auto cell: destGroup.cells) {
-      if(cell->type == "$dff") {
-        // check if the output of dff is the same as regSig
-        auto dffConnSig = cell->connections_["Q"];
-        if(dffConnSig == regSig) {
-          driving_same_reg = true;
-          break;
+    if(mp.find(outputConnSig) != mp.end()) {
+      auto destGroup = mp[outputConnSig];
+      for(auto cell: destGroup.cells) {
+        if(cell->type == "$dff") {
+          // check if the output of dff is the same as regSig
+          auto dffConnSig = cell->connections_["Q"];
+          if(dffConnSig == regSig) {
+            driving_same_reg = true;
+            break;
+          }
         }
       }
     }
+    if(!driving_same_reg) return;
+    // now we know that the output of this mux is driving the same reg
+    // add constraint
+    auto path = get_path();
+    expr ctrdExpr = get_expr(c, ctrdSig, path);
+    expr regExpr = get_expr(c, regSig, path);
+    s.add(ctrdExpr == regExpr);
+    propagate_constraints(s, c, design, module, mp, regSet, regSig);
   }
-  if(!driving_same_reg) return;
-  // now we know that the output of this mux is driving the same reg
-  // add constraint
-  auto path = get_path();
-  expr ctrdExpr = get_expr(c, ctrdSig, path);
-  expr regExpr = get_expr(c, regSig, path);
-  s.add(ctrdExpr == regExpr);
-  propagate_constraints(s, c, design, module, mp, regSet, regSig);
 }
 
 void add_dff(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
