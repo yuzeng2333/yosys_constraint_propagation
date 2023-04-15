@@ -51,7 +51,7 @@ std::vector<RTLIL::Cell*> g_cell_stack;
 std::vector<CheckSet> g_check_vec;
 std::map<std::string, std::shared_ptr<expr>> g_expr_map;
 typedef std::map<RTLIL::SigSpec, DestGroup> DriveMap_t;
-
+typedef std::set<RTLIL::SigSpec> RegSet_t;
 
 void collect_eq(RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig, int forbidValue);
 void simplify_eq(solver &s, context &c, RTLIL::Module* module, 

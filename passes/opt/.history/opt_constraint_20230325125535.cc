@@ -330,16 +330,6 @@ void get_drive_map(RTLIL::Module* module, DriveMap_t &mp) {
 }
 
 
-void get_reg_set(TLIL::Module* module, RegSet_t &regSet) {
-  for(auto cellPair: module->cells_) {
-    RTLIL::Cell* cell = cellPair.second;
-    if(cell->type == "$dff") {
-      auto connSig = cell->connections_["Q"];
-      regSet.insert(connSig);
-    }
-  }
-}
-
 void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
                 RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
    std::cout << "-- add_submod, cell: " << cell->name.str() << ", ctrdSig: " 
@@ -353,69 +343,17 @@ void add_submod(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* mod
    auto subMod = get_subModule(design, cell);
    DriveMap_t mp;
    get_drive_map(subMod, mp);
-   RegSet_t regSet;
-   get_reg_set(subMod, regSet);
    g_cell_stack.push_back(cell);
    path = get_path();
    expr portExpr = get_expr(c, port, path);
    s.add(ctrdExpr == portExpr);
-   propagate_constraints(s, c, design, subMod, mp, regSet, port);
+   propagate_constraints(s, c, design, subMod, mp, port);
    g_cell_stack.pop_back();
 }
 
 
 void add_and(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
-             DriveMap_t &mp, RegSet_t &regSet, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
-  std::cout << "-- add_and, cell: " << cell->name.str() << ", ctrdSig: " 
-            << ctrdSig.as_wire()->name.str() << std::endl;
-  RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
-  if(port.empty()) return;
-  RTLIL::SigSpec outputConnSig;
-  bool const_arg = false;
-  int const_value;
-  for(auto pair: cell->connections_) {
-    auto portId = pair.first;
-    auto connSig = pair.second;
-    if(cell->input(portId) && connSig.is_fully_const()) {
-      const_arg = true;
-      const_value = connSig.as_int();
-    }
-    else if(cell->output(portId)) {
-      outputConnSig = connSig;
-    }
-  }
-  if(const_arg) {
-    assert(equal_width(ctrdSig, outputConnSig));
-    auto path = get_path();
-    expr ctrdExpr = get_expr(c, ctrdSig, path);
-    expr outExpr = get_expr(c, outputConnSig, path);
-    s.add((ctrdExpr & const_value) == outExpr);
-    propagate_constraints(s, c, design, module, mp, regSet, outputConnSig);
-  }
-}
-
-
-// mux is considered only when its output is writing to a reg, and that
-// reg is also an input of this mux
-void add_mux(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
              DriveMap_t &mp, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
-  std::cout << "-- add_mux, cell: " << cell->name.str() << ", ctrdSig: " 
-            << ctrdSig.as_wire()->name.str() << std::endl;
-  RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
-  if(port.empty()) return;
-  RTLIL::SigSpec outputConnSig;
-  bool has_reg_input = false;
-  bool driving_same_reg = false;
-  int const_value;
-  for(auto pair: cell->connections_) {
-    auto portId = pair.first;
-    auto connSig = pair.second;
-    if()
-  }
-}
-
-void add_dff(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module, 
-             DriveMap_t &mp, RegSet_t &regSet, RTLIL::Cell* cell, RTLIL::SigSpec ctrdSig) {
   std::cout << "-- add_and, cell: " << cell->name.str() << ", ctrdSig: " 
             << ctrdSig.as_wire()->name.str() << std::endl;
   RTLIL::SigSpec port = get_cell_port(ctrdSig, cell);
@@ -440,13 +378,14 @@ void add_dff(solver &s, context &c, RTLIL::Design* design, RTLIL::Module* module
     expr ctrdExpr = get_expr(c, ctrdSig, path);
     expr outExpr = get_expr(c, outputConnSig, path);
     s.add((ctrdExpr & const_value) == outExpr);
-    propagate_constraints(s, c, design, module, mp, regSet, outputConnSig);
+    propagate_constraints(s, c, design, module, mp, outputConnSig);
   }
 }
+
 
 /// Recursively propagate constraints through the design
 void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module* module, 
-                           DriveMap_t &mp, RegSet_t &regSet, RTLIL::SigSpec ctrdSig)
+                           DriveMap_t &mp, RTLIL::SigSpec ctrdSig)
                            //std::string ctrdSig, int offset, int length, uint32_t forbidValue)
 {
   // traverse all connections
@@ -473,11 +412,8 @@ void propagate_constraints(solver &s, context &c, Design* design, RTLIL::Module*
     else if(cell_is_module(design, cell))
       add_submod(s, c, design, module, cell, ctrdSig);
     else if(cell->type == ID($and))
-      add_and(s, c, design, module, mp, regSet, cell, ctrdSig);
-    else if(cell->type == ID($dff))
-      add_dff(s, c, design, module, mp, regSet, cell, ctrdSig);
-    else if(cell->type == ID($mux))
-      add_mux(s, c, design, module, mp, regSet, cell, ctrdSig);
+      add_and(s, c, design, module, mp, cell, ctrdSig);
+    else if(cell->type == )
     else {
       std::cout << "Error: unexpected cell type: " << cell->type.str() << std::endl;
     }
